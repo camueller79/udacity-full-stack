@@ -46,10 +46,11 @@ def create_app(test_config=None):
 
     # get all categories and add to a dictionary
     categories = Category.query.all()
-    cat_dict = []
+    cat_dict = {}
     for category in categories:
       #cat_dict[category.id] = category.type
-      cat_dict.append(category.type)
+      # cat_dict.append(str(category.id) + ":" + category.type)
+      cat_dict[category.id] = category.type
 
     # if no categories found, abort with 404 error
     if (len(cat_dict) == 0):
@@ -225,71 +226,52 @@ def create_app(test_config=None):
     # get the previous questions
     previous_questions = body['previous_questions']
     # get the category
-    quiz_category_id = body['quiz_category']
+    quiz_category_id = body['quiz_category']['id']
 
-    if (quiz_category_id == 'ALL'):
-      if previous_questions is not None:
-        questions = Question.query.filter(Question.id.notin_('previous_questions')).all()
-      else:
-        questions = Question.query.all()
+    if (quiz_category_id == 0 ):
+      questions = Question.query.all()
     else:
-      category = Category.query.get(quiz_category_id)
-      if previous_questions is not None:
-        questions = Question.query.filter(Question.id.notin_(previous_questions),Question.category == category.id).all()
-      else:
-        questions = Question.query.filter(Question.category == category.id).all()
+      questions = Question.query.filter_by(category=quiz_category_id).all()
+    total = len(questions)
+    if (total == len(previous_questions)):
+      return jsonify({'success':True})
 
-    next_question = random.choice(questions).format()
-    if not next_question:
-      abort(404)
-    # next_question = questions[0].format()
-    if next_question is None:
-      next_question = False
+    # new list of unused questions
+    new_list = []
+    for q in questions:
+      if (q.id not in previous_questions):
+        new_list.append(q)
+    question = random.choice(new_list)
+
     return jsonify({
       'success': True,
-      'question': next_question
+      'question': question.format()
     })
-    # # if no previous questions were provided
-    # if not previous_questions:
-    #   # check to see if we got a category
-    #   if quiz_category:
-    #     if (quiz_category == 0):
-    #       # query for questions in all categories
-    #       question_query = Question.query.all()
-    #     else:
-    #       # query for questions in the given category
-    #       question_query = (Question.query.filter(Question.category == str(quiz_category['id'])).all())
-        
-    # # Otherwise, we do have a list of previous questions
+
+    # if (quiz_category_id == 0 ):
+    #   if previous_questions is None:
+    #     print(previous_questions)
+    #     questions = Question.query.filter(Question.id.notin_(previous_questions)).all()
+    #   else:
+    #     questions = Question.query.all()
     # else:
-    #   if quiz_category:
-    #     if (quiz_category == 0):
-    #       # All categories chosen
-    #       question_query = Question.query.filter(Question.id.notin_(previous_questions)).all()
-    #     else:
-    #       # we also got a category, so let's get questions that match it
-    #       question_query = (Question.query.filter(Question.category == str(quiz_category['id'])).filter(Question.id.notin_(previous_questions)).all())
+    #   category = Category.query.get(quiz_category_id)
+    #   if previous_questions is None:
+    #     print(previous_questions)
+    #     questions = Question.query.filter(Question.id.notin_(previous_questions),Question.category == category.id).all()
+    #   else:
+    #     questions = Question.query.filter(Question.category == category.id).all()
 
-    # questions_formatted = [ q.format() for q in question_query]
-
-    # if (len(questions_formatted) == 0):
-    #   return jsonify({'success': True})
-    # else:
-    #   random_question = questions_formatted[random.randint(0, (len(questions_formatted)-1))]
-
-    #   return jsonify({
-    #     'success': True,
-    #     'question': random_question
-    #   })
-      
-
-
-
-
-
-
-
-
+    # next_question = random.choice(questions).format()
+    # if not next_question:
+    #   abort(404)
+    # # next_question = questions[0].format()
+    # if next_question is None:
+    #   next_question = False
+    # return jsonify({
+    #   'success': True,
+    #   'question': next_question
+    # })
 
   '''
   Error handlers for all expected errors 
